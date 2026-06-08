@@ -1,4 +1,5 @@
 {
+  "id": "RNZXUe3Xdw461tHg",
   "name": "WF1 Ingest (mock)",
   "nodes": [
     {
@@ -70,6 +71,6 @@
       "main": [[{ "node": "Upsert tenders (Supabase)", "type": "main", "index": 0 }]]
     }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": { "executionOrder": "v1", "errorWorkflow": "AF15RiHM3PhZEpS3" },
   "active": false
 }

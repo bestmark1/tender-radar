@@ -1,5 +1,7 @@
 {
+  "id": "AF15RiHM3PhZEpS3",
   "name": "WF0 Error Handler",
+  "active": true,
   "nodes": [
     {
       "parameters": {},
@@ -25,6 +27,5 @@
       "main": [[{ "node": "Log error", "type": "main", "index": 0 }]]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "active": false
+  "settings": { "executionOrder": "v1" }
 }
