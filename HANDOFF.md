@@ -4,7 +4,10 @@
 
 ## Где мы
 
-Пайплайн `phased-engineering-pipeline`, режим Full. Все gate пройдены. **Фазы 0, 1, 2 завершены.** Из-за КЭП-блокера ЕИС (TD-9) **Фаза 3 (реальный ЕИС) отложена**; идём к **Фазе 4 (фильтрация)** на мок-тендерах.
+Пайплайн `phased-engineering-pipeline`, режим Full. **Фазы 0,1,2,4,5(Telegram) завершены.** Фаза 3 (реальный ЕИС) отложена (КЭП/TD-9) — пайплайн на мок-данных. Есть корневой README. Следующее: **Фаза 6 (дашборд)** либо email-канал (Gmail — нужен App Password).
+
+## Состояние n8n (5 воркфлоу, все в git со стабильными id)
+WF0 `AF15RiHM3PhZEpS3` · WF1 `RNZXUe3Xdw461tHg` · WF2 `bRq9w0Hd79CtXz7P` · WF3 `Wf3NoTiFy00aBcD` · WF4 `Wf4DeAdLiNe00aB`. Telegram-канал работает (токен+chat_id в `n8n/.env`). Прогон: `docker compose run --rm --no-deps -e EXECUTIONS_MODE=regular -e N8N_RUNNERS_ENABLED=false n8n execute --id <id>`. Тест-данные: 1 матч переведён в `interested` (для проверки WF4) — при необходимости вернуть в `new`.
 
 ## Состояние окружения
 - Supabase-проект создан (URL `https://xtxyporcywnpkdyatoxe.supabase.co`), миграция 0001 применена, Auth URL настроен. anon-ключ в `web/.env.local`. service_role у пользователя (в N8N позже).
