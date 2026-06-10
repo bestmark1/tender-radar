@@ -1,0 +1,31 @@
+{
+  "id": "AF15RiHM3PhZEpS3",
+  "name": "WF0 Error Handler",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Глобальный обработчик ошибок (AC-6.3).\n// Скелет: логируем детали упавшего воркфлоу. В Фазе 5/7 сюда добавим\n// реальный алерт (email/VK/Telegram).\nconst err = $json;\nconst wf = err.workflow || {};\nconst exec = err.execution || {};\nconsole.error('[WF0] Workflow failed:', JSON.stringify({\n  workflow: wf.name || wf.id,\n  executionId: exec.id,\n  lastNode: exec.lastNodeExecuted,\n  message: (exec.error && exec.error.message) || err.message\n}));\nreturn [{ json: { handled: true, workflow: wf.name, message: (exec.error && exec.error.message) || null } }];"
+      },
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "Log error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{ "node": "Log error", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

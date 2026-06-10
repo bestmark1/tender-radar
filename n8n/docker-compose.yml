@@ -44,6 +44,23 @@ services:
       GENERIC_TIMEZONE: Europe/Moscow
       EXECUTIONS_DATA_PRUNE: "true"
       EXECUTIONS_DATA_MAX_AGE: "168"
+      # Supabase (бизнес-данные) — воркфлоу читают через {{$env.*}}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE: ${SUPABASE_SERVICE_ROLE}
+      # Telegram (демо-канал уведомлений, Фаза 5)
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      # LLM-скоринг релевантности
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      # SMTP (Яндекс) — воркфлоу читают через $env
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+    volumes:
+      # папка с экспортированными воркфлоу — для import/export через CLI
+      - ./workflows:/workflows
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,6 +81,18 @@ services:
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: Europe/Moscow
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE: ${SUPABASE_SERVICE_ROLE}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+    volumes:
+      - ./workflows:/workflows
     depends_on:
       n8n:
         condition: service_started

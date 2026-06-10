@@ -1,0 +1,179 @@
+{
+  "id": "Wf5ScOrE000aBcD",
+  "name": "WF5 Score (DeepSeek)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "55555555-5555-4555-8555-555555555501",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/matches?score=is.null&select=id,tenders(title),radars(name)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "55555555-5555-4555-8555-555555555502",
+      "name": "Get unscored",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -60,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.deepseek.com/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DEEPSEEK_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'deepseek-chat', temperature: 0, max_tokens: 5, messages: [ { role: 'system', content: 'Ты оцениваешь, насколько госзакупка подходит профилю поставщика. Профиль: ' + ($json.radars ? $json.radars.name : '') + '. Ответь ТОЛЬКО целым числом 0-100, без слов.' }, { role: 'user', content: 'Закупка: ' + ($json.tenders ? $json.tenders.title : '') } ] }) }}",
+        "options": {}
+      },
+      "id": "55555555-5555-4555-8555-555555555503",
+      "name": "Score (DeepSeek)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.all();\nconst matches = $('Get unscored').all();\nconst out = [];\nfor (let i = 0; i < resp.length; i++) {\n  const content = resp[i].json && resp[i].json.choices && resp[i].json.choices[0] && resp[i].json.choices[0].message ? resp[i].json.choices[0].message.content : '';\n  const m = String(content).match(/\\d+/);\n  let score = m ? parseInt(m[0], 10) : 0;\n  if (score < 0) score = 0; if (score > 100) score = 100;\n  out.push({ json: { id: matches[i].json.id, score } });\n}\nreturn out;"
+      },
+      "id": "55555555-5555-4555-8555-555555555504",
+      "name": "Apply score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/matches?id=eq.{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ score: $json.score }) }}",
+        "options": {}
+      },
+      "id": "55555555-5555-4555-8555-555555555505",
+      "name": "Save score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get unscored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get unscored": {
+      "main": [
+        [
+          {
+            "node": "Score (DeepSeek)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score (DeepSeek)": {
+      "main": [
+        [
+          {
+            "node": "Apply score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply score": {
+      "main": [
+        [
+          {
+            "node": "Save score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "AF15RiHM3PhZEpS3"
+  },
+  "active": false
+}

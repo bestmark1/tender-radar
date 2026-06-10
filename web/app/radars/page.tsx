@@ -49,7 +49,10 @@ export default function RadarsPage() {
     <main style={{ maxWidth: 760, margin: "2rem auto", padding: "0 1rem", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1>Мои радары</h1>
-        <button onClick={logout} style={{ padding: "6px 12px" }}>Выйти</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/tenders"><button style={{ padding: "6px 12px" }}>Найденные закупки →</button></Link>
+          <button onClick={logout} style={{ padding: "6px 12px" }}>Выйти</button>
+        </div>
       </div>
       <Link href="/radars/new"><button style={{ padding: "8px 16px", marginBottom: 16 }}>+ Новый радар</button></Link>
 

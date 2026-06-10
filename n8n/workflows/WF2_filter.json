@@ -1,0 +1,225 @@
+{
+  "updatedAt": "2026-06-08T17:43:38.295Z",
+  "createdAt": "2026-06-08T14:45:01.802Z",
+  "id": "bRq9w0Hd79CtXz7P",
+  "name": "WF2 Filter",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "96d2fdd7-0dab-469f-a1d2-e044870e69a9",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/radars?is_active=eq.true&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "acf66a0c-475f-4036-bf67-affc43fd71fc",
+      "name": "Get radars"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/tenders?select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "bd325d15-0a11-45a1-a716-8edc7a6f61f7",
+      "name": "Get tenders"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Радары — из ноды Get radars; тендеры — со входа (Get tenders)\nconst radars = $('Get radars').all().map(i => i.json);\nconst tenders = $input.all().map(i => i.json);\n\nfunction matches(t, r) {\n  // регион\n  if (!r.regions.includes(t.region)) return false;\n  // ОКПД2: хотя бы один префикс совпадает\n  if (r.okpd_prefixes?.length) {\n    if (!r.okpd_prefixes.some(p => (t.okpd || '').startsWith(p))) return false;\n  }\n  const title = (t.title || '').toLowerCase();\n  // ключевые слова: включить\n  if (r.keywords_include?.length) {\n    if (!r.keywords_include.some(k => title.includes(k.toLowerCase()))) return false;\n  }\n  // ключевые слова: исключить\n  if (r.keywords_exclude?.length) {\n    if (r.keywords_exclude.some(k => title.includes(k.toLowerCase()))) return false;\n  }\n  // цена (НМЦК)\n  if (r.price_min != null && t.price < r.price_min) return false;\n  if (r.price_max != null && t.price > r.price_max) return false;\n  // закон\n  if (r.law !== 'both' && r.law !== t.law) return false;\n  return true;\n}\n\nconst out = [];\nfor (const t of tenders) {\n  for (const r of radars) {\n    if (matches(t, r)) {\n      out.push({ json: {\n        tender_id: t.id,\n        radar_id: r.id,\n        user_id: r.user_id,\n        status: 'new',\n      }});\n    }\n  }\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -128
+      ],
+      "id": "861dfdfd-1c9b-41b5-8edb-9bce87aa3484",
+      "name": "Match"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/matches?on_conflict=tender_id,radar_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE }}"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "tender_id",
+              "value": "={{ $json.tender_id }}"
+            },
+            {
+              "name": "radar_id",
+              "value": "={{ $json.radar_id }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $json.user_id }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        800,
+        -128
+      ],
+      "id": "5ae87858-e4d8-4442-baa8-94cc76bdbaf5",
+      "name": "Upsert matches"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get radars",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get radars": {
+      "main": [
+        [
+          {
+            "node": "Get tenders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get tenders": {
+      "main": [
+        [
+          {
+            "node": "Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match": {
+      "main": [
+        [
+          {
+            "node": "Upsert matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "errorWorkflow": "AF15RiHM3PhZEpS3"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "b807b312-1a66-4782-bea3-425daaecf793",
+  "activeVersionId": null,
+  "versionCounter": 81,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-06-08T14:45:01.802Z",
+      "createdAt": "2026-06-08T14:45:01.802Z",
+      "role": "workflow:owner",
+      "workflowId": "bRq9w0Hd79CtXz7P",
+      "projectId": "y9JWny4XP0hKxDLG",
+      "project": {
+        "updatedAt": "2026-06-08T14:19:20.779Z",
+        "createdAt": "2026-06-08T13:26:02.283Z",
+        "id": "y9JWny4XP0hKxDLG",
+        "name": "bestmark1 1 <import.sgm@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "4c9a6cce-f60c-485c-97ae-c9952201f2dd"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
