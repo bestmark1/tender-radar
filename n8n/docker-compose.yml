@@ -50,6 +50,13 @@ services:
       # Telegram (демо-канал уведомлений, Фаза 5)
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      # LLM-скоринг релевантности
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      # SMTP (Яндекс) — воркфлоу читают через $env
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       # папка с экспортированными воркфлоу — для import/export через CLI
@@ -78,6 +85,11 @@ services:
       SUPABASE_SERVICE_ROLE: ${SUPABASE_SERVICE_ROLE}
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - ./workflows:/workflows

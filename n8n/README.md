@@ -25,8 +25,25 @@ docker compose up -d
 |---|---|
 | `workflows/WF0_error.json` | Глобальный Error Workflow (лог сбоев; алерт — Фаза 5/7) |
 | `workflows/WF1_ingest.json` | Schedule/Manual → мок-извещения (клининг) → upsert в Supabase `tenders` |
+| `workflows/WF2_filter.json` | Матчинг закупок с радарами → upsert `matches` |
+| `workflows/WF3_notify.json` | Дайджест новых матчей → Telegram + email параллельно → `notified` |
+| `workflows/WF4_deadline.json` | Напоминания о близких дедлайнах подачи → Telegram → `reminded` |
+| `workflows/WF5_score.json` | LLM-скоринг релевантности через DeepSeek → `matches.score` |
 
 В Фазе 3 заглушка в WF1 заменяется реальным SOAP-вызовом ЕИС.
+
+### SMTP credential (email-канал)
+
+Send Email нода требует n8n credential (не `$env`). Создаётся одной командой из `.env`:
+
+```bash
+# собрать credential из .env и импортировать
+node -e 'require("fs").writeFileSync("workflows/_cred.json", JSON.stringify([{id:"smtp-yandex",name:"SMTP Yandex (env)",type:"smtp",data:{user:process.env.SMTP_USER,password:process.env.SMTP_PASSWORD,host:process.env.SMTP_HOST,port:parseInt(process.env.SMTP_PORT,10)||465,secure:true,disableStartTls:false}}]))' \
+  && docker compose exec -T n8n n8n import:credentials --input=/workflows/_cred.json \
+  && rm workflows/_cred.json
+```
+
+Credential id `smtp-yandex` зашит в `WF3_notify.json`, поэтому воркфлоу подхватит его автоматически.
 
 ### Импорт / экспорт через CLI
 

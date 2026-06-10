@@ -50,7 +50,8 @@
 | US-1 | Настройка «радаров»: регион, ОКПД2, ключевые слова (incl/excl), цена, закон | Веб + `radars` |
 | US-2 | Загрузка закупок в `tenders` (скелет на мок-данных; реальный ЕИС — Ф.3) | n8n **WF1** |
 | US-3 | Фильтрация закупок по радарам → `matches` | n8n **WF2** |
-| US-4 | Дайджест новых совпадений + напоминания о дедлайнах в Telegram | n8n **WF3/WF4** |
+| US-4 | Дайджест новых совпадений + напоминания о дедлайнах в Telegram и на email | n8n **WF3/WF4** |
+|  ⚡ | LLM-скоринг релевантности закупок (DeepSeek) — балл 0–100 в `matches.score` | n8n **WF5** |
 
 ---
 
@@ -61,8 +62,9 @@
 | `WF0_error` | Error Trigger | Глобальный обработчик ошибок (лог/алерт) |
 | `WF1_ingest` | Schedule / Manual | Загрузка закупок → upsert в Supabase `tenders` (идемпотентно по `reg_number+version`) |
 | `WF2_filter` | Manual | Матчинг закупок с активными радарами → upsert `matches` |
-| `WF3_notify` | Manual | Дайджест новых совпадений → Telegram → пометка `notified` |
+| `WF3_notify` | Manual | Дайджест новых совпадений → Telegram + email параллельно → `notified` |
 | `WF4_deadline` | Schedule / Manual | Напоминания за N дней до дедлайна по «interested» → Telegram → `reminded` |
+| `WF5_score` | Manual | LLM-скоринг релевантности (DeepSeek) → балл 0–100 в `matches.score` |
 
 Воркфлоу лежат в [`n8n/workflows/`](n8n/workflows/) как версионируемый JSON. Секреты — только в `.env` (через `{{ $env.* }}`), в git их нет.
 
@@ -73,7 +75,7 @@
 | Канал | Статус |
 |---|---|
 | Telegram | ✅ реализовано |
-| Email (SMTP) | 🔜 нода готова, доставку включаем на проде |
+| Email (SMTP Яндекс) | ✅ нода и credential готовы; доставка работает на сервере (локально провайдер блокирует SMTP-порты) |
 | ВКонтакте | 🔧 заложен в архитектуру |
 | MAX | 🔧 заложен в архитектуру |
 

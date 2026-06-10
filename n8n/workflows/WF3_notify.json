@@ -1,6 +1,6 @@
 {
   "id": "Wf3NoTiFy00aBcD",
-  "name": "WF3 Notify (Telegram)",
+  "name": "WF3 Notify (Telegram + Email)",
   "nodes": [
     {
       "parameters": {},
@@ -9,7 +9,7 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -260,
+        -360,
         0
       ]
     },
@@ -37,20 +37,20 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -40,
+        -140,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "const matches = $input.all().map(i => i.json);\nif (!matches.length) return [];\nconst fmt = (n) => Number(n).toLocaleString('ru-RU');\nconst lines = matches.map(m => {\n  const t = m.tenders || {};\n  const r = m.radars || {};\n  const dl = t.submission_deadline ? new Date(t.submission_deadline).toLocaleDateString('ru-RU') : '\\u2014';\n  const price = (t.price != null) ? fmt(t.price) + ' \\u20bd' : '\\u2014';\n  return '\\u2022 ' + (t.title || '\\u0411\\u0435\\u0437 \\u043d\\u0430\\u0437\\u0432\\u0430\\u043d\\u0438\\u044f') +\n    '\\n  \\u0417\\u0430\\u043a\\u0430\\u0437\\u0447\\u0438\\u043a: ' + (t.customer || '\\u2014') +\n    '\\n  \\u041d\\u041c\\u0426\\u041a: ' + price + '  \\u00b7  \\u0414\\u0435\\u0434\\u043b\\u0430\\u0439\\u043d: ' + dl +\n    '\\n  \\u0420\\u0430\\u0434\\u0430\\u0440: ' + (r.name || '\\u2014') +\n    '\\n  ' + (t.eis_url || '');\n});\nconst text = '\\ud83c\\udfaf \\u041d\\u043e\\u0432\\u044b\\u0435 \\u0437\\u0430\\u043a\\u0443\\u043f\\u043a\\u0438 \\u043f\\u043e \\u0432\\u0430\\u0448\\u0438\\u043c \\u0440\\u0430\\u0434\\u0430\\u0440\\u0430\\u043c (' + matches.length + '):\\n\\n' + lines.join('\\n\\n');\nreturn [{ json: { text } }];"
+        "jsCode": "const matches = $input.all().map(i => i.json);\nif (!matches.length) return [];\nconst fmt = (n) => Number(n).toLocaleString('ru-RU');\nconst lines = matches.map(m => {\n  const t = m.tenders || {};\n  const r = m.radars || {};\n  const dl = t.submission_deadline ? new Date(t.submission_deadline).toLocaleDateString('ru-RU') : '\\u2014';\n  const price = (t.price != null) ? fmt(t.price) + ' \\u20bd' : '\\u2014';\n  return '\\u2022 ' + (t.title || '\\u0411\\u0435\\u0437 \\u043d\\u0430\\u0437\\u0432\\u0430\\u043d\\u0438\\u044f') +\n    '\\n  \\u0417\\u0430\\u043a\\u0430\\u0437\\u0447\\u0438\\u043a: ' + (t.customer || '\\u2014') +\n    '\\n  \\u041d\\u041c\\u0426\\u041a: ' + price + '  \\u00b7  \\u0414\\u0435\\u0434\\u043b\\u0430\\u0439\\u043d: ' + dl +\n    '\\n  \\u0420\\u0430\\u0434\\u0430\\u0440: ' + (r.name || '\\u2014') +\n    '\\n  ' + (t.eis_url || '');\n});\nconst text = '\\ud83c\\udfaf \\u041d\\u043e\\u0432\\u044b\\u0435 \\u0437\\u0430\\u043a\\u0443\\u043f\\u043a\\u0438 \\u043f\\u043e \\u0432\\u0430\\u0448\\u0438\\u043c \\u0440\\u0430\\u0434\\u0430\\u0440\\u0430\\u043c (' + matches.length + '):\\n\\n' + lines.join('\\n\\n');\nreturn [{ json: { text, count: matches.length } }];"
       },
       "id": "33333333-3333-4333-8333-333333333303",
       "name": "Build digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        180,
+        80,
         0
       ]
     },
@@ -77,7 +77,56 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        400,
+        300,
+        -120
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $env.SMTP_USER }}",
+        "subject": "=Тендер-радар: {{ $json.count }} новых закупок",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {}
+      },
+      "id": "33333333-3333-4333-8333-333333333306",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        300,
+        120
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-yandex",
+          "name": "SMTP Yandex (env)"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "id": "33333333-3333-4333-8333-333333333307",
+      "name": "Merge channels",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        520,
         0
       ]
     },
@@ -116,7 +165,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        620,
+        740,
         0
       ]
     }
@@ -151,11 +200,38 @@
             "node": "Send Telegram",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
     "Send Telegram": {
+      "main": [
+        [
+          {
+            "node": "Merge channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Merge channels",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge channels": {
       "main": [
         [
           {
