@@ -286,10 +286,14 @@ erDiagram
 ```
  okpd | rank |    short_name     | bids_total | bids_won | win_rate_% | percentile | competitors
 ------+------+-------------------+------------+----------+------------+------------+------------
- 81   |    1 | АО «Компания-1»   |       1154 |       96 |       8.32 |       56.2 |        2677
- 81   |    2 | ООО «Поставщик-3» |        295 |       29 |       9.83 |       60.9 |        2677
- 81   |    3 | АО «Компания-2»   |        379 |       26 |       6.86 |       53.5 |        2677
+ 81   |    1 | АО «Компания-1»   |       1192 |      103 |       8.64 |       58.1 |        2627
+ 81   |    2 | АО «Компания-2»   |        386 |       33 |       8.55 |       58.1 |        2627
+ 81   |    3 | ООО «Поставщик-3» |        303 |       22 |       7.26 |       55.0 |        2627
 ```
+
+Конкретные числа зависят от момента генерации: запрос смотрит на окно
+«последние полгода», а окно дат в сгенерированных данных отсчитывается от
+`now()`. Состав и порядок лидеров при этом устойчивы.
 
 Что в нём неочевидного:
 
@@ -365,6 +369,7 @@ Execution Time: 3.912 ms
 Execution Time: 104.292 ms
 ```
 
+
 Здесь seq scan по `bids` — правильный выбор: запрос агрегирует ставки за
 полгода, это большая часть таблицы, и точечный доступ по индексу был бы
 дороже. Планировщик распараллелил его на 2 воркера. Отдельно стоит
@@ -381,7 +386,7 @@ cd tasks/task-04-db-schema
 docker compose up -d
 
 docker compose exec -T db psql -U tender -d tender_platform -v ON_ERROR_STOP=1 < 01_schema.sql
-docker compose exec -T db psql -U tender -d tender_platform -v ON_ERROR_STOP=1 < 02_seed.sql   # ~40 с
+docker compose exec -T db psql -U tender -d tender_platform -v ON_ERROR_STOP=1 < 02_seed.sql   # ~80 с
 docker compose exec -T db psql -U tender -d tender_platform < 03_analytics.sql
 docker compose exec -T db psql -U tender -d tender_platform < 04_explain.sql
 ```
