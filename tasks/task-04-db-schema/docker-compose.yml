@@ -1,0 +1,28 @@
+# Локальная БД для проверки схемы (задание 4).
+#
+#   docker compose up -d
+#   docker compose exec -T db psql -U tender -d tender_platform -v ON_ERROR_STOP=1 < 01_schema.sql
+#   docker compose exec -T db psql -U tender -d tender_platform -v ON_ERROR_STOP=1 < 02_seed.sql
+#   docker compose exec -T db psql -U tender -d tender_platform < 03_analytics.sql
+#
+# Пароль тестовый и намеренно лежит в открытом виде: контейнер поднимается
+# локально, наружу порт не публикуется дальше localhost, боевых данных нет.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tender
+      POSTGRES_PASSWORD: tender
+      POSTGRES_DB: tender_platform
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tender -d tender_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

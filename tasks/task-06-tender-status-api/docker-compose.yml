@@ -1,0 +1,45 @@
+# Сервис трекинга статусов + PostgreSQL со схемой из задания 4.
+#
+#   docker compose up --build
+#   открыть http://localhost:8000/docs
+#
+# Пароль тестовый и намеренно в открытом виде: локальный стенд, порт наружу
+# не публикуется, боевых данных нет. В бою значения приходят из окружения
+# или менеджера секретов — приложение читает их одинаково (APP_*).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tender
+      POSTGRES_PASSWORD: tender
+      POSTGRES_DB: tender_platform
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      # Порядок важен: скрипты выполняются по алфавиту имени файла.
+      # Схема площадки (задание 4) → миграция аудита → тестовые компании.
+      - ../task-04-db-schema/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./migrations/0002_tender_status_history.sql:/docker-entrypoint-initdb.d/02_history.sql:ro
+      - ./fixtures/companies.sql:/docker-entrypoint-initdb.d/03_companies.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tender -d tender_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      APP_DATABASE_URL: postgresql+asyncpg://tender:tender@db:5432/tender_platform
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        # Именно service_healthy, а не service_started: контейнер БД
+        # поднимается раньше, чем Postgres готов принимать соединения,
+        # и приложение упало бы на старте.
+        condition: service_healthy
+
+volumes:
+  pgdata:

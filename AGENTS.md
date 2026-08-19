@@ -24,6 +24,8 @@ n8n/
   workflows/*.json        экспортированные воркфлоу (версионируются)
 supabase/
   migrations/*.sql        схема БД бизнес-данных
+tasks/                    решения тестовых заданий (вне фазового цикла,
+                          PROGRESS/HANDOFF/phase-registry не затрагивают)
 .env.example              шаблон секретов (реальные — вне git)
 ```
 
