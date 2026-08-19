@@ -8,3 +8,9 @@ node_modules/
 web/.next/
 web/node_modules/
 *.tsbuildinfo
+
+# Задание 6: артефакты Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
