@@ -26,18 +26,24 @@ set search_path = marketplace, public;
 --     не должен пропускать нулевую НМЦК — в аналитике дешевле
 --     перестраховаться, чем ловить деление на ноль на проде.
 -- =====================================================================
-with period as (
-  -- Скользящие 30 дней. Если нужен календарный месяц — заменить на
-  -- date_trunc('month', now()) - interval '1 month' и верхнюю границу.
-  select now() - interval '30 days' as from_ts
-),
-won_contracts as (
+with won_contracts as (
+  -- Границу периода намеренно НЕ выносим в отдельный CTE.
+  -- Через `where signed_at >= (select from_ts from period)` предикат
+  -- становится для планировщика InitPlan'ом с неизвестным значением:
+  -- селективность оценивается по умолчанию, индекс по signed_at не
+  -- используется и contractors читается последовательно. С предикатом
+  -- на месте планировщик знает границу и берёт bitmap index scan.
+  -- Замер на 20 745 контрактах: 16.5 мс против 6.1 мс (см. SOLUTION.md).
+  --
+  -- Скользящие 30 дней. Для календарного месяца:
+  --   signed_at >= date_trunc('month', now()) - interval '1 month'
+  --   and signed_at < date_trunc('month', now())
   select c.company_id,
          c.contract_amount,
          l.nmck
     from contractors c
     join lots l on l.id = c.lot_id
-   where c.signed_at >= (select from_ts from period)
+   where c.signed_at >= now() - interval '30 days'
      and c.status <> 'terminated'
 ),
 by_company as (
