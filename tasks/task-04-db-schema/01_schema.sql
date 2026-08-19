@@ -164,7 +164,9 @@ create table lots (
 
   constraint lots_number_uniq  unique (tender_id, lot_number),
   constraint lots_nmck_positive check (nmck > 0),
-  constraint lots_okpd2_format  check (okpd2 ~ '^[0-9]{2}(\.[0-9]{1,2}){0,3}$'),
+  -- ОКПД2: 2 цифры класса и до трёх уточняющих групп по 1–3 цифры
+  -- ('81.2', '81.29.19', '43.999', '81.29.19.000')
+  constraint lots_okpd2_format  check (okpd2 ~ '^[0-9]{2}(\.[0-9]{1,3}){0,3}$'),
   constraint lots_quantity_positive check (quantity is null or quantity > 0)
 );
 
