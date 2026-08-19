@@ -21,9 +21,6 @@
 \set ON_ERROR_STOP on
 set search_path = marketplace, public;
 
--- Фиксируем зерно ГСЧ — оно отвечает за разброс сумм и дат.
-select setseed(0.4242);
-
 -- Выбор «случайной» строки из справочника делается не через random(),
 -- а через хеш от ключа строки-источника. Причина принципиальная:
 -- некоррелированный random() внутри LATERAL планировщик вправе вычислить
@@ -34,6 +31,22 @@ select setseed(0.4242);
 create function pg_temp.pick(seed text, n int) returns int
 language sql immutable as $$
   select 1 + (hashtext(seed) & 2147483647) % n
+$$;
+
+-- Доля в [0,1) из того же хеша — заменяет random() там, где нужен
+-- непрерывный разброс (суммы, сроки).
+create function pg_temp.frac(seed text) returns float8
+language sql immutable as $$
+  select (hashtext(seed) & 2147483647)::float8 / 2147483647.0
+$$;
+
+-- Детерминированный uuid из ключа. Первичные ключи намеренно не берутся
+-- из gen_random_uuid(): от id зависят все последующие хеш-выборки, и со
+-- случайными id набор данных менялся бы от прогона к прогону — сравнивать
+-- замеры «до/после» на такой базе нельзя.
+create function pg_temp.uid(seed text) returns uuid
+language sql immutable as $$
+  select md5(seed)::uuid
 $$;
 
 -- То же, но со смещением к началу диапазона (степень > 1): нужно для
@@ -78,9 +91,10 @@ insert into ref_okpd (okpd2, title) values
 -- ---------------------------------------------------------------------
 -- 1. companies — 5 000 организаций
 -- ---------------------------------------------------------------------
-insert into companies (inn, kpp, ogrn, short_name, full_name, region_code,
+insert into companies (id, inn, kpp, ogrn, short_name, full_name, region_code,
                        is_customer, is_supplier, is_blacklisted)
 select
+  pg_temp.uid('company:' || g)                                      as id,
   lpad((1000000000 + g)::text, 10, '0')                             as inn,
   lpad((100000000 + g)::text, 9, '0')                               as kpp,
   lpad((1000000000000 + g)::text, 13, '0')                          as ogrn,
@@ -113,9 +127,10 @@ select id from companies where is_supplier and not is_blacklisted order by inn;
 -- ---------------------------------------------------------------------
 -- Распределение статусов приближено к реальному: большая часть закупок
 -- уже завершена, доля выигранных невелика.
-insert into tenders (reg_number, version, customer_id, title, law, procedure_type,
+insert into tenders (id, reg_number, version, customer_id, title, law, procedure_type,
                      region_code, status, published_at, submission_deadline, eis_url)
 select
+  pg_temp.uid('tender:' || g)                                       as id,
   '0' || lpad(g::text, 17, '0')                                     as reg_number,
   1                                                                 as version,
   cust.id                                                           as customer_id,
@@ -152,15 +167,16 @@ update tenders set published_at = null, submission_deadline = null where status 
 -- ---------------------------------------------------------------------
 -- 3. lots — 1–3 лота на закупку (~100 тыс.)
 -- ---------------------------------------------------------------------
-insert into lots (tender_id, lot_number, title, okpd2, nmck, quantity, unit, delivery_place)
+insert into lots (id, tender_id, lot_number, title, okpd2, nmck, quantity, unit, delivery_place)
 select
+  pg_temp.uid('lot:' || t.id::text || ':' || n)                     as id,
   t.id,
   n                                                                 as lot_number,
   'Лот ' || n || ' — ' || ok.title                                  as title,
   ok.okpd2,
   -- цены лог-нормальные: много мелких закупок, единицы крупных
-  round((50000 * exp(random() * 4.5))::numeric, 2)                  as nmck,
-  round((1 + random() * 500)::numeric, 3)                           as quantity,
+  round((50000 * exp(pg_temp.frac('nmck:' || t.id::text || ':' || n) * 4.5))::numeric, 2) as nmck,
+  round((1 + pg_temp.frac('qty:' || t.id::text || ':' || n) * 500)::numeric, 3)           as quantity,
   (array['шт','усл.ед','кв.м','ч','мес'])[pg_temp.pick('unit:' || t.id::text || ':' || n, 5)],
   'г. Москва, объект №' || n
 from tenders t
@@ -180,14 +196,15 @@ update tenders t
 -- ---------------------------------------------------------------------
 -- Черновики ставок не имеют: закупка ещё не опубликована.
 -- Часть лотов остаётся без ставок — несостоявшаяся закупка.
-insert into bids (lot_id, supplier_id, amount, status, submitted_at)
+insert into bids (id, lot_id, supplier_id, amount, status, submitted_at)
 select
+  pg_temp.uid('bid:' || l.id::text || ':' || cnt.k)                 as id,
   l.id,
   s.id,
   -- участники снижают цену от НМЦК на 0–35%
-  round((l.nmck * (1 - random() * 0.35))::numeric, 2)               as amount,
+  round((l.nmck * (1 - pg_temp.frac('amt:' || l.id::text || ':' || cnt.k) * 0.35))::numeric, 2) as amount,
   'submitted',
-  t.published_at + (random() * 5) * interval '1 day'
+  t.published_at + pg_temp.frac('when:' || l.id::text || ':' || cnt.k) * 5 * interval '1 day'
 from lots l
 join tenders t on t.id = l.tender_id
 cross join lateral (
@@ -234,9 +251,10 @@ update bids b
 -- ---------------------------------------------------------------------
 -- 6. contractors — контракты по победившим ставкам
 -- ---------------------------------------------------------------------
-insert into contractors (lot_id, company_id, bid_id, contract_number, contract_amount,
+insert into contractors (id, lot_id, company_id, bid_id, contract_number, contract_amount,
                          signed_at, execution_deadline, completed_at, status, penalty_amount)
 select
+  pg_temp.uid('contract:' || b.id::text)                            as id,
   b.lot_id,
   b.supplier_id,
   b.id,
@@ -266,7 +284,12 @@ cross join lateral (
     else                                                    'terminated'
   end as status
 ) fin
-where b.status = 'won';
+where b.status = 'won'
+  -- Контракт не может быть подписан раньше, чем закрылся приём заявок.
+  -- Отсекаем закупки, у которых дедлайн ещё не наступил: торги идут,
+  -- победитель определён, контракт не подписан — нормальное состояние,
+  -- а вот контракт с датой в будущем — мусор в данных.
+  and t.submission_deadline + interval '17 days' < now();
 
 -- ---------------------------------------------------------------------
 -- Статистика для планировщика: без ANALYZE первые же EXPLAIN покажут
