@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="APP_", env_file=".env", extra="ignore")
 
     # Схема marketplace создаётся заданием 4 — сервис работает поверх неё.
-    database_url: str = "postgresql+asyncpg://tender:tender@localhost:5433/tender_platform"
+    database_url: str = "postgresql+asyncpg://tender:tender@localhost:5434/tender_platform"
     db_schema: str = "marketplace"
 
     db_pool_size: int = 5
