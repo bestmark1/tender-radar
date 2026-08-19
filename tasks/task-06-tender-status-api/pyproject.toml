@@ -1,0 +1,23 @@
+[project]
+name = "tender-status-api"
+version = "1.0.0"
+description = "Микросервис трекинга статусов тендеров (задание 6)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# Пул соединений SQLAlchemy создаётся один раз на процесс и привязан к
+# тому циклу событий, в котором был открыт. С отдельным циклом на каждый
+# тест соединения из пула оказываются чужими для текущего цикла и падают
+# на "Event loop is closed". Один цикл на сессию снимает вопрос.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.flake8]
+max-line-length = 100
